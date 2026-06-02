@@ -70,3 +70,94 @@ agentic_shell_quote() {
   quoted="$(print -r -- "$value" | sed "s/'/'\\\\''/g")"
   print -r -- "'$quoted'"
 }
+
+agentic_validate_effort() {
+  local effort="$1"
+
+  case "$effort" in
+    high|medium|low)
+      return 0
+      ;;
+    *)
+      agentic_print_error "unsupported effort level: $effort"
+      return 1
+      ;;
+  esac
+}
+
+agentic_codex_pane_command() {
+  local effort="$1"
+  local workspace="$2"
+
+  agentic_validate_effort "$effort"
+  print -r -- "codex -c model_reasoning_effort=\\\"$effort\\\" -C $(agentic_shell_quote "$workspace")"
+}
+
+agentic_claude_pane_command() {
+  local effort="$1"
+
+  agentic_validate_effort "$effort"
+  print -r -- "claude --effort $effort"
+}
+
+agentic_attach_or_switch() {
+  local session_name="$1"
+
+  if [[ -n "${TMUX:-}" ]]; then
+    exec tmux switch-client -t "$session_name"
+  fi
+
+  exec tmux attach-session -t "$session_name"
+}
+
+agentic_create_tmux_session() {
+  local session_name="$1"
+  local workspace="$2"
+  local high_command="$3"
+  local medium_command="$4"
+  local low_command="$5"
+
+  tmux new-session -d -s "$session_name" -n agents -c "$workspace" "$high_command"
+  tmux split-window -v -t "$session_name:agents.0" -c "$workspace" "$medium_command"
+  tmux split-window -v -t "$session_name:agents.1" -c "$workspace" "$low_command"
+  tmux select-layout -t "$session_name:agents" even-vertical
+  tmux select-pane -t "$session_name:agents.0"
+}
+
+agentic_launch_multi_effort_session() {
+  local tool="$1"
+  local workspace="$2"
+  local session_name
+  local high_command
+  local medium_command
+  local low_command
+
+  agentic_require_command tmux "tmux"
+
+  case "$tool" in
+    codex)
+      agentic_require_command codex "codex"
+      high_command="$(agentic_codex_pane_command high "$workspace")"
+      medium_command="$(agentic_codex_pane_command medium "$workspace")"
+      low_command="$(agentic_codex_pane_command low "$workspace")"
+      ;;
+    claude)
+      agentic_require_command claude "claude"
+      high_command="$(agentic_claude_pane_command high)"
+      medium_command="$(agentic_claude_pane_command medium)"
+      low_command="$(agentic_claude_pane_command low)"
+      ;;
+    *)
+      agentic_print_error "unsupported agent tool: $tool"
+      return 1
+      ;;
+  esac
+
+  session_name="$(agentic_session_name "$tool" "$workspace")"
+
+  if ! tmux has-session -t "$session_name" 2>/dev/null; then
+    agentic_create_tmux_session "$session_name" "$workspace" "$high_command" "$medium_command" "$low_command"
+  fi
+
+  agentic_attach_or_switch "$session_name"
+}

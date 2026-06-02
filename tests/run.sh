@@ -102,12 +102,36 @@ test_quote_command() {
   assert_eq "'/tmp/it'\\''s-here'" "$(agentic_shell_quote "/tmp/it's-here")" "quotes workspace paths with single quotes"
 }
 
+test_codex_pane_command() {
+  local command
+
+  command="$(agentic_codex_pane_command high "/tmp/my project")"
+  assert_eq "codex -c model_reasoning_effort=\\\"high\\\" -C '/tmp/my project'" "$command" "builds high-effort Codex pane command"
+}
+
+test_claude_pane_command() {
+  local command
+
+  command="$(agentic_claude_pane_command low)"
+  assert_eq "claude --effort low" "$command" "builds low-effort Claude pane command"
+}
+
+test_effort_label_validation() {
+  assert_success "accepts high effort" agentic_validate_effort high
+  assert_success "accepts medium effort" agentic_validate_effort medium
+  assert_success "accepts low effort" agentic_validate_effort low
+  assert_failure "rejects unsupported effort" agentic_validate_effort extreme
+}
+
 test_session_basename_slug
 test_session_slug_sanitizes_characters
 test_session_slug_handles_root
 test_session_name_includes_tool_and_hash
 test_missing_command_check
 test_quote_command
+test_codex_pane_command
+test_claude_pane_command
+test_effort_label_validation
 
 if (( failures > 0 )); then
   print -u2 "$failures test(s) failed"
