@@ -43,6 +43,19 @@ claude --effort low
 
 Each session has one tmux window with three vertically stacked panes ordered high, medium, low. Re-running a command from the same Workspace Directory attaches to the existing Workspace Session. Running from inside tmux switches the current tmux client instead of nesting tmux.
 
+The panes are labeled by effort level. Click a pane to focus it, or use tmux keyboard navigation:
+
+```text
+Ctrl-b Up
+Ctrl-b Down
+```
+
+Detach with:
+
+```text
+Ctrl-b d
+```
+
 ## Tests
 
 ```bash

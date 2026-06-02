@@ -123,6 +123,46 @@ test_effort_label_validation() {
   assert_failure "rejects unsupported effort" agentic_validate_effort extreme
 }
 
+test_tmux_session_dx_enables_mouse_selection() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_configure_tmux_session_dx codex-workspace-12345678
+  unfunction tmux
+
+  assert_eq "set-option -t codex-workspace-12345678 mouse on" "$calls[1]" "enables mouse selection for tmux panes"
+}
+
+test_tmux_window_dx_labels_pane_borders() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_configure_tmux_window_dx codex-workspace-12345678:agents
+  unfunction tmux
+
+  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-status top" "$calls[1]" "shows pane border labels"
+  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-format  #{pane_index}: #{pane_title} " "$calls[2]" "formats pane border labels with index and effort"
+}
+
+test_effort_pane_title_sets_tmux_pane_title() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_set_effort_pane_title codex-workspace-12345678:agents.1 medium
+  unfunction tmux
+
+  assert_eq "select-pane -t codex-workspace-12345678:agents.1 -T medium" "$calls[1]" "sets effort label as tmux pane title"
+}
+
 test_launcher_scripts_exist_and_are_executable() {
   assert_eval_success "oc exists and is executable" '[[ -x "$repo_root/bin/oc" ]]'
   assert_eval_success "ot exists and is executable" '[[ -x "$repo_root/bin/ot" ]]'
@@ -169,6 +209,9 @@ test_quote_command
 test_codex_pane_command
 test_claude_pane_command
 test_effort_label_validation
+test_tmux_session_dx_enables_mouse_selection
+test_tmux_window_dx_labels_pane_borders
+test_effort_pane_title_sets_tmux_pane_title
 test_launcher_scripts_exist_and_are_executable
 test_launcher_scripts_reference_shared_helper
 test_shell_zsh_adds_bin_to_path_once

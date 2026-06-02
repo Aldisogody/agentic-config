@@ -106,6 +106,26 @@ agentic_tmux_pane_command() {
   print -r -- "PATH=$(agentic_shell_quote "$PATH") $command"
 }
 
+agentic_configure_tmux_session_dx() {
+  local session_name="$1"
+
+  tmux set-option -t "$session_name" mouse on
+}
+
+agentic_configure_tmux_window_dx() {
+  local window_target="$1"
+
+  tmux set-window-option -t "$window_target" pane-border-status top
+  tmux set-window-option -t "$window_target" pane-border-format " #{pane_index}: #{pane_title} "
+}
+
+agentic_set_effort_pane_title() {
+  local pane_target="$1"
+  local effort="$2"
+
+  tmux select-pane -t "$pane_target" -T "$effort"
+}
+
 agentic_attach_or_switch() {
   local session_name="$1"
 
@@ -125,8 +145,16 @@ agentic_create_tmux_session() {
   local path_environment="PATH=$PATH"
 
   tmux new-session -d -s "$session_name" -n agents -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$high_command")"
+  agentic_configure_tmux_session_dx "$session_name"
+  agentic_configure_tmux_window_dx "${session_name}:agents"
+  agentic_set_effort_pane_title "${session_name}:agents.0" high
+
   tmux split-window -v -t "${session_name}:agents.0" -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$medium_command")"
+  agentic_set_effort_pane_title "${session_name}:agents.1" medium
+
   tmux split-window -v -t "${session_name}:agents.1" -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$low_command")"
+  agentic_set_effort_pane_title "${session_name}:agents.2" low
+
   tmux select-layout -t "${session_name}:agents" even-vertical
   tmux select-pane -t "${session_name}:agents.0"
 }
