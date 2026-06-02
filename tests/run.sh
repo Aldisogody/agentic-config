@@ -151,6 +151,15 @@ test_shell_zsh_adds_bin_to_path_once() {
   assert_eq "1" "$output" "shell.zsh adds bin directory to PATH exactly once"
 }
 
+test_install_script_exists_and_is_executable() {
+  assert_eval_success "install.sh exists and is executable" '[[ -x "$repo_root/bin/install.sh" ]]'
+}
+
+test_install_script_uses_managed_block() {
+  assert_success "install.sh writes managed block start marker" grep -q "BEGIN AGENTIC CONFIG MANAGED BLOCK" "$repo_root/bin/install.sh"
+  assert_success "install.sh writes managed block end marker" grep -q "END AGENTIC CONFIG MANAGED BLOCK" "$repo_root/bin/install.sh"
+}
+
 test_session_basename_slug
 test_session_slug_sanitizes_characters
 test_session_slug_handles_root
@@ -163,6 +172,8 @@ test_effort_label_validation
 test_launcher_scripts_exist_and_are_executable
 test_launcher_scripts_reference_shared_helper
 test_shell_zsh_adds_bin_to_path_once
+test_install_script_exists_and_is_executable
+test_install_script_uses_managed_block
 
 if (( failures > 0 )); then
   print -u2 "$failures test(s) failed"
