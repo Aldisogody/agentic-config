@@ -99,7 +99,7 @@ test_missing_command_check() {
 
 test_quote_command() {
   assert_eq "'/tmp/my project'" "$(agentic_shell_quote "/tmp/my project")" "quotes workspace paths with spaces"
-  assert_eq "'/tmp/it'\''s-here'" "$(agentic_shell_quote "/tmp/it's-here")" "quotes workspace paths with single quotes"
+  assert_eq "'/tmp/it'\\''s-here'" "$(agentic_shell_quote "/tmp/it's-here")" "quotes workspace paths with single quotes"
 }
 
 test_session_basename_slug
