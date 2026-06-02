@@ -133,6 +133,24 @@ test_launcher_scripts_reference_shared_helper() {
   assert_success "ot uses shared launcher helper" grep -q "multi-effort-session.zsh" "$repo_root/bin/ot"
 }
 
+test_shell_zsh_adds_bin_to_path_once() {
+  local output
+
+  output="$(
+    AGENTIC_CONFIG_ROOT="$repo_root" zsh -c '
+      source "$AGENTIC_CONFIG_ROOT/shell.zsh"
+      source "$AGENTIC_CONFIG_ROOT/shell.zsh"
+      count=0
+      for entry in ${(s/:/)PATH}; do
+        [[ "$entry" == "$AGENTIC_CONFIG_ROOT/bin" ]] && count=$((count + 1))
+      done
+      print "$count"
+    '
+  )"
+
+  assert_eq "1" "$output" "shell.zsh adds bin directory to PATH exactly once"
+}
+
 test_session_basename_slug
 test_session_slug_sanitizes_characters
 test_session_slug_handles_root
@@ -144,6 +162,7 @@ test_claude_pane_command
 test_effort_label_validation
 test_launcher_scripts_exist_and_are_executable
 test_launcher_scripts_reference_shared_helper
+test_shell_zsh_adds_bin_to_path_once
 
 if (( failures > 0 )); then
   print -u2 "$failures test(s) failed"
