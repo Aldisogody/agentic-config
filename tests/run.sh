@@ -123,6 +123,16 @@ test_effort_label_validation() {
   assert_failure "rejects unsupported effort" agentic_validate_effort extreme
 }
 
+test_launcher_scripts_exist_and_are_executable() {
+  assert_eval_success "oc exists and is executable" '[[ -x "$repo_root/bin/oc" ]]'
+  assert_eval_success "ot exists and is executable" '[[ -x "$repo_root/bin/ot" ]]'
+}
+
+test_launcher_scripts_reference_shared_helper() {
+  assert_success "oc uses shared launcher helper" grep -q "multi-effort-session.zsh" "$repo_root/bin/oc"
+  assert_success "ot uses shared launcher helper" grep -q "multi-effort-session.zsh" "$repo_root/bin/ot"
+}
+
 test_session_basename_slug
 test_session_slug_sanitizes_characters
 test_session_slug_handles_root
@@ -132,6 +142,8 @@ test_quote_command
 test_codex_pane_command
 test_claude_pane_command
 test_effort_label_validation
+test_launcher_scripts_exist_and_are_executable
+test_launcher_scripts_reference_shared_helper
 
 if (( failures > 0 )); then
   print -u2 "$failures test(s) failed"

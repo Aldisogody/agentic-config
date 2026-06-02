@@ -1,0 +1,8 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/lib/multi-effort-session.zsh"
+
+workspace="$(pwd -P)"
+agentic_launch_multi_effort_session claude "$workspace"
