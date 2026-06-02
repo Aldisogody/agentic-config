@@ -100,6 +100,12 @@ agentic_claude_pane_command() {
   print -r -- "claude --effort $effort"
 }
 
+agentic_tmux_pane_command() {
+  local command="$1"
+
+  print -r -- "PATH=$(agentic_shell_quote "$PATH") $command"
+}
+
 agentic_attach_or_switch() {
   local session_name="$1"
 
@@ -116,12 +122,13 @@ agentic_create_tmux_session() {
   local high_command="$3"
   local medium_command="$4"
   local low_command="$5"
+  local path_environment="PATH=$PATH"
 
-  tmux new-session -d -s "$session_name" -n agents -c "$workspace" "$high_command"
-  tmux split-window -v -t "$session_name:agents.0" -c "$workspace" "$medium_command"
-  tmux split-window -v -t "$session_name:agents.1" -c "$workspace" "$low_command"
-  tmux select-layout -t "$session_name:agents" even-vertical
-  tmux select-pane -t "$session_name:agents.0"
+  tmux new-session -d -s "$session_name" -n agents -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$high_command")"
+  tmux split-window -v -t "${session_name}:agents.0" -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$medium_command")"
+  tmux split-window -v -t "${session_name}:agents.1" -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$low_command")"
+  tmux select-layout -t "${session_name}:agents" even-vertical
+  tmux select-pane -t "${session_name}:agents.0"
 }
 
 agentic_launch_multi_effort_session() {
