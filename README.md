@@ -75,6 +75,8 @@ Stop both the Codex and Claude Workspace Sessions for the current Workspace Dire
 ```text
 Ctrl-b a
 ```
+Note: When u press control + b leave the presses and press a.
+
 
 This immediately terminates all six Effort Lanes for that workspace. It does not affect Workspace Sessions for other directories or unrelated tmux sessions. `Ctrl+C` continues to interrupt only the focused pane.
 
