@@ -1,0 +1,62 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+directory="${1:-}"
+
+if [[ -z "$directory" ]] || ! command -v git >/dev/null 2>&1; then
+  exit 0
+fi
+
+if ! git -C "$directory" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  exit 0
+fi
+
+branch="$(git -C "$directory" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+if [[ -z "$branch" ]]; then
+  branch="detached@$(git -C "$directory" rev-parse --short HEAD 2>/dev/null || print unknown)"
+fi
+
+typeset -A counts
+counts=(M 0 A 0 D 0 R 0 C 0 U 0 untracked 0)
+
+while IFS= read -r status_line; do
+  git_status="${status_line[1,2]}"
+
+  case "$git_status" in
+    '??')
+      counts[untracked]=$((counts[untracked] + 1))
+      continue
+      ;;
+    '!!')
+      continue
+      ;;
+  esac
+
+  for column in 1 2; do
+    code="${git_status[$column,$column]}"
+    if (( column == 2 )) && [[ "$code" == "${git_status[1,1]}" ]]; then
+      continue
+    fi
+    case "$code" in
+      M|A|D|R|C|U)
+        counts[$code]=$((counts[$code] + 1))
+        ;;
+    esac
+  done
+done < <(git -C "$directory" status --porcelain --untracked-files=normal 2>/dev/null)
+
+segments=()
+for code in M A D R C U; do
+  if (( counts[$code] > 0 )); then
+    segments+=("${code}${counts[$code]}")
+  fi
+done
+if (( counts[untracked] > 0 )); then
+  segments+=("?${counts[untracked]}")
+fi
+
+if (( ${#segments[@]} == 0 )); then
+  print -r -- " | $branch | clean"
+else
+  print -r -- " | $branch | ${(j: :)segments}"
+fi

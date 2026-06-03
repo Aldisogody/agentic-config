@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
+agentic_lib_dir="${${(%):-%x}:A:h}"
+agentic_bin_dir="${agentic_lib_dir:h}"
+
 agentic_print_error() {
   print -u2 "agentic-config: $*"
 }
@@ -116,7 +119,7 @@ agentic_configure_tmux_window_dx() {
   local window_target="$1"
 
   tmux set-window-option -t "$window_target" pane-border-status top
-  tmux set-window-option -t "$window_target" pane-border-format " #{pane_index}: #{pane_title} "
+  tmux set-window-option -t "$window_target" pane-border-format " #{pane_index}: #{pane_title} | #{b:pane_current_path} #($(agentic_shell_quote "$agentic_bin_dir/agentic-pane-git-segment") #{q:pane_current_path}) "
 }
 
 agentic_set_effort_pane_title() {
@@ -124,6 +127,13 @@ agentic_set_effort_pane_title() {
   local effort="$2"
 
   tmux select-pane -t "$pane_target" -T "$effort"
+}
+
+agentic_configure_existing_tmux_session() {
+  local session_name="$1"
+
+  agentic_configure_tmux_session_dx "$session_name"
+  agentic_configure_tmux_window_dx "${session_name}:agents"
 }
 
 agentic_attach_or_switch() {
@@ -192,6 +202,8 @@ agentic_launch_multi_effort_session() {
 
   if ! tmux has-session -t "$session_name" 2>/dev/null; then
     agentic_create_tmux_session "$session_name" "$workspace" "$high_command" "$medium_command" "$low_command"
+  else
+    agentic_configure_existing_tmux_session "$session_name"
   fi
 
   agentic_attach_or_switch "$session_name"

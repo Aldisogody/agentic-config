@@ -43,7 +43,21 @@ claude --effort low
 
 Each session has one tmux window with three vertically stacked panes ordered high, medium, low. Re-running a command from the same Workspace Directory attaches to the existing Workspace Session. Running from inside tmux switches the current tmux client instead of nesting tmux.
 
-The panes are labeled by effort level. Click a pane to focus it, or use tmux keyboard navigation:
+The panes are labeled by effort level and show the current directory, Git branch, and local working tree changes:
+
+```text
+0: high | agentic-config | main | M2 A1 ?1
+```
+
+Clean Git worktrees show `clean`:
+
+```text
+0: high | agentic-config | main | clean
+```
+
+Non-Git directories show only the directory name. Git information refreshes through tmux without wrapping or modifying the Agent Tool processes.
+
+Click a pane to focus it, or use tmux keyboard navigation:
 
 ```text
 Ctrl-b Up
@@ -60,7 +74,7 @@ Ctrl-b d
 
 ```bash
 zsh tests/run.sh
-zsh -n bin/install.sh bin/oc bin/ot bin/lib/multi-effort-session.zsh tests/run.sh shell.zsh
+zsh -n bin/install.sh bin/oc bin/ot bin/agentic-pane-git-segment bin/lib/multi-effort-session.zsh tests/run.sh shell.zsh
 ```
 
 ## Manual Verification
@@ -85,7 +99,7 @@ cd "$tmp_project"
 PATH="$tmp_bin:$PATH" /absolute/path/to/agentic-config/bin/oc
 ```
 
-Detach with `Ctrl-b d`, then re-run the same command and confirm it attaches to the existing session. Repeat with `ot`.
+Confirm each pane border shows the directory name, Git branch, and `clean`. Create or modify a file and confirm the Git change counts appear. Detach with `Ctrl-b d`, then re-run the same command and confirm it attaches to the existing session. Repeat with `ot`.
 
 Clean up:
 

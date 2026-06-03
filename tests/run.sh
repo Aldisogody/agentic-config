@@ -147,7 +147,7 @@ test_tmux_window_dx_labels_pane_borders() {
   unfunction tmux
 
   assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-status top" "$calls[1]" "shows pane border labels"
-  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-format  #{pane_index}: #{pane_title} " "$calls[2]" "formats pane border labels with index and effort"
+  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-format  #{pane_index}: #{pane_title} | #{b:pane_current_path} #('$repo_root/bin/agentic-pane-git-segment' #{q:pane_current_path}) " "$calls[2]" "formats pane border labels with directory and Git context"
 }
 
 test_effort_pane_title_sets_tmux_pane_title() {
@@ -161,6 +161,65 @@ test_effort_pane_title_sets_tmux_pane_title() {
   unfunction tmux
 
   assert_eq "select-pane -t codex-workspace-12345678:agents.1 -T medium" "$calls[1]" "sets effort label as tmux pane title"
+}
+
+test_existing_session_reapplies_tmux_configuration() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_configure_existing_tmux_session "codex-workspace-12345678"
+  unfunction tmux
+
+  assert_eq "set-option -t codex-workspace-12345678 mouse on" "$calls[1]" "reapplies session configuration"
+  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-status top" "$calls[2]" "reapplies window configuration"
+}
+
+test_pane_git_segment_handles_git_worktree_states() {
+  local tmp_dir
+  local repo
+
+  tmp_dir="$(mktemp -d)"
+  repo="$tmp_dir/repo with spaces"
+  mkdir -p "$repo"
+  git -C "$repo" init -q -b main
+  git -C "$repo" config user.email test@example.com
+  git -C "$repo" config user.name Test
+  print "base" > "$repo/modified"
+  print "base" > "$repo/deleted"
+  print "base" > "$repo/renamed"
+  git -C "$repo" add .
+  git -C "$repo" commit -qm initial
+
+  assert_eq " | main | clean" "$("$repo_root/bin/agentic-pane-git-segment" "$repo")" "shows clean branch"
+
+  print "change" >> "$repo/modified"
+  rm "$repo/deleted"
+  git -C "$repo" mv renamed moved
+  print "new" > "$repo/added"
+  git -C "$repo" add added
+  print "untracked" > "$repo/untracked"
+
+  assert_eq " | main | M1 A1 D1 R1 ?1" "$("$repo_root/bin/agentic-pane-git-segment" "$repo")" "shows compact local change counts"
+
+  git -C "$repo" checkout -q --detach HEAD
+  assert_eval_success "shows detached HEAD commit" '[[ "$("$repo_root/bin/agentic-pane-git-segment" "$repo")" == " | detached@"* ]]'
+
+  rm -rf "$tmp_dir"
+}
+
+test_pane_git_segment_omits_non_git_directories() {
+  local tmp_dir
+
+  tmp_dir="$(mktemp -d)"
+  assert_eq "" "$("$repo_root/bin/agentic-pane-git-segment" "$tmp_dir")" "omits Git context outside repositories"
+  rm -rf "$tmp_dir"
+}
+
+test_pane_git_segment_exists_and_is_executable() {
+  assert_eval_success "agentic-pane-git-segment exists and is executable" '[[ -x "$repo_root/bin/agentic-pane-git-segment" ]]'
 }
 
 test_launcher_scripts_exist_and_are_executable() {
@@ -212,6 +271,10 @@ test_effort_label_validation
 test_tmux_session_dx_enables_mouse_selection
 test_tmux_window_dx_labels_pane_borders
 test_effort_pane_title_sets_tmux_pane_title
+test_existing_session_reapplies_tmux_configuration
+test_pane_git_segment_handles_git_worktree_states
+test_pane_git_segment_omits_non_git_directories
+test_pane_git_segment_exists_and_is_executable
 test_launcher_scripts_exist_and_are_executable
 test_launcher_scripts_reference_shared_helper
 test_shell_zsh_adds_bin_to_path_once
