@@ -70,6 +70,14 @@ Detach with:
 Ctrl-b d
 ```
 
+Stop both the Codex and Claude Workspace Sessions for the current Workspace Directory with:
+
+```text
+Ctrl-b a
+```
+
+This immediately terminates all six Effort Lanes for that workspace. It does not affect Workspace Sessions for other directories or unrelated tmux sessions. `Ctrl+C` continues to interrupt only the focused pane.
+
 ## Tests
 
 ```bash
@@ -99,7 +107,7 @@ cd "$tmp_project"
 PATH="$tmp_bin:$PATH" /absolute/path/to/agentic-config/bin/oc
 ```
 
-Confirm each pane border shows the directory name, Git branch, and `clean`. Create or modify a file and confirm the Git change counts appear. Detach with `Ctrl-b d`, then re-run the same command and confirm it attaches to the existing session. Repeat with `ot`.
+Confirm each pane border shows the directory name, Git branch, and `clean`. Create or modify a file and confirm the Git change counts appear. Detach with `Ctrl-b d`, then re-run the same command and confirm it attaches to the existing session. Repeat with `ot`. Launch both tools for a second workspace, invoke `Ctrl-b a` in the first workspace, and confirm only the first workspace's Codex and Claude sessions stop.
 
 Clean up:
 

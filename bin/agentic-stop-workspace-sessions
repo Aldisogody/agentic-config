@@ -1,0 +1,11 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "$script_dir/lib/multi-effort-session.zsh"
+
+workspace="${1:-}"
+active_session="${2:-}"
+
+agentic_require_command tmux "tmux"
+agentic_stop_workspace_sessions "$workspace" "$active_session"

@@ -111,8 +111,14 @@ agentic_tmux_pane_command() {
 
 agentic_configure_tmux_session_dx() {
   local session_name="$1"
+  local workspace="$2"
+  local stop_command
 
   tmux set-option -t "$session_name" mouse on
+  tmux set-option -t "$session_name" @agentic_workspace "$workspace"
+
+  stop_command="$(agentic_shell_quote "$agentic_bin_dir/agentic-stop-workspace-sessions") #{?@agentic_workspace,#{q:@agentic_workspace},''} #{q:session_name}"
+  tmux bind-key a run-shell "$stop_command"
 }
 
 agentic_configure_tmux_window_dx() {
@@ -131,9 +137,42 @@ agentic_set_effort_pane_title() {
 
 agentic_configure_existing_tmux_session() {
   local session_name="$1"
+  local workspace="$2"
 
-  agentic_configure_tmux_session_dx "$session_name"
+  agentic_configure_tmux_session_dx "$session_name" "$workspace"
   agentic_configure_tmux_window_dx "${session_name}:agents"
+}
+
+agentic_kill_tmux_session_if_present() {
+  local session_name="$1"
+
+  if tmux has-session -t "=$session_name" 2>/dev/null; then
+    tmux kill-session -t "=$session_name"
+  fi
+}
+
+agentic_stop_workspace_sessions() {
+  local workspace="$1"
+  local active_session="${2:-}"
+  local codex_session
+  local claude_session
+
+  if [[ -z "$workspace" ]]; then
+    agentic_print_error "cannot stop Workspace Sessions without workspace metadata"
+    return 1
+  fi
+
+  codex_session="$(agentic_session_name codex "$workspace")"
+  claude_session="$(agentic_session_name claude "$workspace")"
+
+  if [[ "$active_session" == "$codex_session" ]]; then
+    agentic_kill_tmux_session_if_present "$claude_session"
+    agentic_kill_tmux_session_if_present "$codex_session"
+    return
+  fi
+
+  agentic_kill_tmux_session_if_present "$codex_session"
+  agentic_kill_tmux_session_if_present "$claude_session"
 }
 
 agentic_attach_or_switch() {
@@ -155,7 +194,7 @@ agentic_create_tmux_session() {
   local path_environment="PATH=$PATH"
 
   tmux new-session -d -s "$session_name" -n agents -c "$workspace" -e "$path_environment" "$(agentic_tmux_pane_command "$high_command")"
-  agentic_configure_tmux_session_dx "$session_name"
+  agentic_configure_tmux_session_dx "$session_name" "$workspace"
   agentic_configure_tmux_window_dx "${session_name}:agents"
   agentic_set_effort_pane_title "${session_name}:agents.0" high
 
@@ -203,7 +242,7 @@ agentic_launch_multi_effort_session() {
   if ! tmux has-session -t "$session_name" 2>/dev/null; then
     agentic_create_tmux_session "$session_name" "$workspace" "$high_command" "$medium_command" "$low_command"
   else
-    agentic_configure_existing_tmux_session "$session_name"
+    agentic_configure_existing_tmux_session "$session_name" "$workspace"
   fi
 
   agentic_attach_or_switch "$session_name"

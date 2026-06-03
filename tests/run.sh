@@ -130,10 +130,36 @@ test_tmux_session_dx_enables_mouse_selection() {
     calls+=("$*")
   }
 
-  agentic_configure_tmux_session_dx codex-workspace-12345678
+  agentic_configure_tmux_session_dx codex-workspace-12345678 /tmp/workspace
   unfunction tmux
 
   assert_eq "set-option -t codex-workspace-12345678 mouse on" "$calls[1]" "enables mouse selection for tmux panes"
+}
+
+test_tmux_session_dx_stores_workspace_metadata() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_configure_tmux_session_dx codex-workspace-12345678 "/tmp/my workspace"
+  unfunction tmux
+
+  assert_eq "set-option -t codex-workspace-12345678 @agentic_workspace /tmp/my workspace" "$calls[2]" "stores workspace metadata on the tmux session"
+}
+
+test_tmux_session_dx_binds_stop_shortcut() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+  }
+
+  agentic_configure_tmux_session_dx codex-workspace-12345678 /tmp/workspace
+  unfunction tmux
+
+  assert_eq "bind-key a run-shell '$repo_root/bin/agentic-stop-workspace-sessions' #{?@agentic_workspace,#{q:@agentic_workspace},''} #{q:session_name}" "$calls[3]" "binds Ctrl-b a to stop current workspace sessions"
 }
 
 test_tmux_window_dx_labels_pane_borders() {
@@ -170,11 +196,52 @@ test_existing_session_reapplies_tmux_configuration() {
     calls+=("$*")
   }
 
-  agentic_configure_existing_tmux_session "codex-workspace-12345678"
+  agentic_configure_existing_tmux_session "codex-workspace-12345678" "/tmp/workspace"
   unfunction tmux
 
   assert_eq "set-option -t codex-workspace-12345678 mouse on" "$calls[1]" "reapplies session configuration"
-  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-status top" "$calls[2]" "reapplies window configuration"
+  assert_eq "set-window-option -t codex-workspace-12345678:agents pane-border-status top" "$calls[4]" "reapplies window configuration"
+}
+
+test_stop_workspace_sessions_kills_exact_tool_sessions_active_last() {
+  local workspace="/tmp/my workspace"
+  local codex_session
+  local claude_session
+  local -a calls
+
+  codex_session="$(agentic_session_name codex "$workspace")"
+  claude_session="$(agentic_session_name claude "$workspace")"
+
+  tmux() {
+    calls+=("$*")
+    return 0
+  }
+
+  agentic_stop_workspace_sessions "$workspace" "$codex_session"
+  unfunction tmux
+
+  assert_eq "has-session -t =$claude_session" "$calls[1]" "checks the non-active Claude session by exact name"
+  assert_eq "kill-session -t =$claude_session" "$calls[2]" "kills the non-active Claude session first"
+  assert_eq "has-session -t =$codex_session" "$calls[3]" "checks the active Codex session by exact name"
+  assert_eq "kill-session -t =$codex_session" "$calls[4]" "kills the active Codex session last"
+}
+
+test_stop_workspace_sessions_ignores_missing_sessions() {
+  local -a calls
+
+  tmux() {
+    calls+=("$*")
+    return 1
+  }
+
+  assert_success "succeeds when workspace sessions are already absent" agentic_stop_workspace_sessions /tmp/workspace
+  unfunction tmux
+
+  assert_eq "2" "${#calls[@]}" "checks both tool sessions when neither exists"
+}
+
+test_stop_workspace_sessions_rejects_missing_workspace() {
+  assert_failure "refuses to stop sessions without workspace metadata" agentic_stop_workspace_sessions ""
 }
 
 test_pane_git_segment_handles_git_worktree_states() {
@@ -225,6 +292,7 @@ test_pane_git_segment_exists_and_is_executable() {
 test_launcher_scripts_exist_and_are_executable() {
   assert_eval_success "oc exists and is executable" '[[ -x "$repo_root/bin/oc" ]]'
   assert_eval_success "ot exists and is executable" '[[ -x "$repo_root/bin/ot" ]]'
+  assert_eval_success "agentic-stop-workspace-sessions exists and is executable" '[[ -x "$repo_root/bin/agentic-stop-workspace-sessions" ]]'
 }
 
 test_launcher_scripts_reference_shared_helper() {
@@ -269,9 +337,14 @@ test_codex_pane_command
 test_claude_pane_command
 test_effort_label_validation
 test_tmux_session_dx_enables_mouse_selection
+test_tmux_session_dx_stores_workspace_metadata
+test_tmux_session_dx_binds_stop_shortcut
 test_tmux_window_dx_labels_pane_borders
 test_effort_pane_title_sets_tmux_pane_title
 test_existing_session_reapplies_tmux_configuration
+test_stop_workspace_sessions_kills_exact_tool_sessions_active_last
+test_stop_workspace_sessions_ignores_missing_sessions
+test_stop_workspace_sessions_rejects_missing_workspace
 test_pane_git_segment_handles_git_worktree_states
 test_pane_git_segment_omits_non_git_directories
 test_pane_git_segment_exists_and_is_executable
